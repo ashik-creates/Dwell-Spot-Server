@@ -127,6 +127,24 @@ async function run() {
       });
     });
 
+    app.get("/api/admin/apartments", async (req: Request, res: Response) => {
+      try {
+        const apartments = await apartmentCollection
+          .find({})
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.send({
+          apartments,
+          total: apartments.length,
+        });
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to fetch apartments",
+        });
+      }
+    });
+
     app.get("/api/apartments/:id", async (req: Request, res: Response) => {
       const id = req.params.id;
       const apartment = await apartmentCollection.findOne({
@@ -138,7 +156,7 @@ async function run() {
         return;
       }
 
-      res.json(apartment);
+      res.send(apartment);
     });
 
     app.get("/api/featured-apartments", async (req: Request, res: Response) => {
@@ -147,7 +165,7 @@ async function run() {
         .limit(4)
         .toArray();
 
-      res.json(apartments);
+      res.send(apartments);
     });
 
     app.get("/api/statistics", async (req: Request, res: Response) => {
@@ -171,7 +189,7 @@ async function run() {
         apartments.map((apartment) => apartment.location),
       ).size;
 
-      res.json({
+      res.send({
         totalApartments,
         availableApartments,
         averagePrice,
@@ -191,7 +209,7 @@ async function run() {
 
           const result = await apartmentCollection.insertOne(apartment);
 
-          res.status(201).json({
+          res.status(201).send({
             success: true,
             message: "Apartment added successfully.",
             insertedId: result.insertedId,
@@ -199,13 +217,38 @@ async function run() {
         } catch (error) {
           console.error(error);
 
-          res.status(500).json({
+          res.status(500).send({
             success: false,
             message: "Failed to add apartment.",
           });
         }
       },
     );
+
+    app.delete("/api/apartments/:id", async (req: Request, res: Response) => {
+      try {
+
+        const id = req.params.id;
+
+        const result = await apartmentCollection.deleteOne({
+          _id: new ObjectId(id as string),
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send({
+            message: "Apartment not found",
+          });
+        }
+
+        res.send({
+          deletedCount: result.deletedCount,
+        });
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to delete apartment",
+        });
+      }
+    });
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
