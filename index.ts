@@ -179,6 +179,34 @@ async function run() {
       });
     });
 
+    app.post(
+      "/api/apartments",
+      async (req: Request<{}, {}, Apartment>, res: Response) => {
+        try {
+          const apartment: Apartment = {
+            ...req.body,
+            rating: 5,
+            createdAt: new Date().toISOString(),
+          };
+
+          const result = await apartmentCollection.insertOne(apartment);
+
+          res.status(201).json({
+            success: true,
+            message: "Apartment added successfully.",
+            insertedId: result.insertedId,
+          });
+        } catch (error) {
+          console.error(error);
+
+          res.status(500).json({
+            success: false,
+            message: "Failed to add apartment.",
+          });
+        }
+      },
+    );
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );

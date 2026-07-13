@@ -13,4 +13,5 @@ export interface Apartment {
   type: string;
   status: string;
   rating: number;
+  createdAt: string;
 }
