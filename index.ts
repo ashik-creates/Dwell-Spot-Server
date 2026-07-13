@@ -141,6 +141,44 @@ async function run() {
       res.json(apartment);
     });
 
+    app.get("/api/featured-apartments", async (req: Request, res: Response) => {
+      const apartments = await apartmentCollection
+        .find({ featured: true })
+        .limit(4)
+        .toArray();
+
+      res.json(apartments);
+    });
+
+    app.get("/api/statistics", async (req: Request, res: Response) => {
+      const apartments = await apartmentCollection.find().toArray();
+
+      const totalApartments = apartments.length;
+
+      const availableApartments = apartments.filter(
+        (apartment) => apartment.status === "Available",
+      ).length;
+
+      const averagePrice =
+        totalApartments > 0
+          ? Math.round(
+              apartments.reduce((sum, apartment) => sum + apartment.price, 0) /
+                totalApartments,
+            )
+          : 0;
+
+      const totalLocations = new Set(
+        apartments.map((apartment) => apartment.location),
+      ).size;
+
+      res.json({
+        totalApartments,
+        availableApartments,
+        averagePrice,
+        totalLocations,
+      });
+    });
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
