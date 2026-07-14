@@ -1,10 +1,12 @@
-import express from "express";
+import express, { type NextFunction } from "express";
 import { type Request, type Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { MongoClient, ObjectId, ServerApiVersion } from "mongodb";
 import type { Apartment } from "./types/apartments.js";
 import { type Filter } from "mongodb";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import { type JWTPayload } from "jose";
 
 dotenv.config();
 
@@ -13,6 +15,10 @@ const port = process.env.PORT;
 
 app.use(cors());
 app.use(express.json());
+
+export interface AuthRequest extends Request {
+  user?: JWTPayload;
+}
 
 const uri = process.env.MONGODB_URI as string;
 
@@ -24,13 +30,41 @@ const client = new MongoClient(uri, {
   },
 });
 
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
+
+const verifyToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer")) {
+    return res.status(401).json({ msg: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ msg: "Unauthorized" });
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    req.user = payload;
+
+    next();
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ msg: "Unauthorized" });
+  }
+};
+
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const db = client.db("dwell-spot");
     const apartmentCollection = db.collection<Apartment>("apartments");
 
-    app.get("/api/apartments", async (req: Request, res: Response) => {
+    app.get("/api/apartments",verifyToken , async (req: Request, res: Response) => {
       const {
         search = "",
         location = "",
@@ -127,7 +161,7 @@ async function run() {
       });
     });
 
-    app.get("/api/admin/apartments", async (req: Request, res: Response) => {
+    app.get("/api/all/apartments", async (req: Request, res: Response) => {
       try {
         const apartments = await apartmentCollection
           .find({})
@@ -198,7 +232,7 @@ async function run() {
     });
 
     app.post(
-      "/api/apartments",
+      "/api/apartments", verifyToken,
       async (req: Request<{}, {}, Apartment>, res: Response) => {
         try {
           const apartment: Apartment = {
@@ -225,7 +259,7 @@ async function run() {
       },
     );
 
-    app.delete("/api/apartments/:id", async (req: Request, res: Response) => {
+    app.delete("/api/apartments/:id", verifyToken, async (req: AuthRequest, res: Response) => {
       try {
 
         const id = req.params.id;
