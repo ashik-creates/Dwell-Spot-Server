@@ -64,7 +64,7 @@ async function run() {
     const db = client.db("dwell-spot");
     const apartmentCollection = db.collection<Apartment>("apartments");
 
-    app.get("/api/apartments",verifyToken , async (req: Request, res: Response) => {
+    app.get("/api/apartments", async (req: Request, res: Response) => {
       const {
         search = "",
         location = "",
