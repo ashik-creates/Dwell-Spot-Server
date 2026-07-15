@@ -11,7 +11,6 @@ export interface Apartment {
   bathrooms: number;
   area: number;
   type: string;
-  status: string;
-  rating: number;
+  status: string; 
   createdAt: string;
 }

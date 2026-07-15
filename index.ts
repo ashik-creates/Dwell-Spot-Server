@@ -34,7 +34,11 @@ const JWKS = createRemoteJWKSet(
   new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
 );
 
-const verifyToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
+const verifyToken = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer")) {
@@ -128,10 +132,6 @@ async function run() {
 
         case "price_desc":
           sortOption = { price: -1 };
-          break;
-
-        case "rating":
-          sortOption = { rating: -1 };
           break;
 
         default:
@@ -232,12 +232,12 @@ async function run() {
     });
 
     app.post(
-      "/api/apartments", verifyToken,
+      "/api/apartments",
+      verifyToken,
       async (req: Request<{}, {}, Apartment>, res: Response) => {
         try {
           const apartment: Apartment = {
             ...req.body,
-            rating: 5,
             createdAt: new Date().toISOString(),
           };
 
@@ -259,30 +259,33 @@ async function run() {
       },
     );
 
-    app.delete("/api/apartments/:id", verifyToken, async (req: AuthRequest, res: Response) => {
-      try {
+    app.delete(
+      "/api/apartments/:id",
+      verifyToken,
+      async (req: AuthRequest, res: Response) => {
+        try {
+          const id = req.params.id;
 
-        const id = req.params.id;
+          const result = await apartmentCollection.deleteOne({
+            _id: new ObjectId(id as string),
+          });
 
-        const result = await apartmentCollection.deleteOne({
-          _id: new ObjectId(id as string),
-        });
+          if (result.deletedCount === 0) {
+            return res.status(404).send({
+              message: "Apartment not found",
+            });
+          }
 
-        if (result.deletedCount === 0) {
-          return res.status(404).send({
-            message: "Apartment not found",
+          res.send({
+            deletedCount: result.deletedCount,
+          });
+        } catch (error) {
+          res.status(500).send({
+            message: "Failed to delete apartment",
           });
         }
-
-        res.send({
-          deletedCount: result.deletedCount,
-        });
-      } catch (error) {
-        res.status(500).send({
-          message: "Failed to delete apartment",
-        });
-      }
-    });
+      },
+    );
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
